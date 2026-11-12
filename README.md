@@ -13,7 +13,7 @@
 在 Windows PowerShell 中运行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/cza-11/xiaozhi-computer-bridge/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "(irm https://raw.githubusercontent.com/cza-11/xiaozhi-computer-bridge/main/install.ps1).TrimStart([char]0xFEFF) | iex"
 ```
 
 安装过程中：
