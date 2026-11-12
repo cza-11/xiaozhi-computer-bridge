@@ -57,6 +57,8 @@ powershell -ExecutionPolicy Bypass -File "$root\start_bridge.ps1" -Stop
 
 ## 常见问题
 
+- **安装时停在 `starting`**：新版安装器会提示控制器错误日志的位置。先在同一个 Windows 用户账户下查看 `%LOCALAPPDATA%\XiaozhiComputerBridge\data\controller.err.log`，也可查看同目录的 `bridge.err.log`。旧版安装器保存的加密地址可以直接通过新版启动脚本读取；重新运行上面的安装命令即可升级。每个 Windows 账户应分别安装并输入自己的 MCP 接入点，凭据不会跨账户共享。
+
 - **HTTP 401/403**：平台拒绝了接入令牌；在自己的智能体中重新生成地址，使用 `-SetEndpoint` 更新。
 - **未检测到 Agent**：安装并配置受支持的 Agent，然后重新运行安装程序。Kimi 等其他 Agent 暂未接入。
 - **显示已连接，但小智没有调用工具**：确认设备绑定和 MCP 接入点属于同一智能体，并检查服务端 MCP 工具注册和语言模型工具调用能力。

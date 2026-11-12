@@ -102,7 +102,7 @@ $SecretPath = Join-Path $DataDir 'mcp-endpoint.dat'
 # ConvertFrom-SecureString uses current-user DPAPI on Windows, so another user
 # account cannot decrypt the stored endpoint token.
 # 使用 Windows 当前用户的 DPAPI 保护接入点凭据。
-$secureEndpoint | ConvertFrom-SecureString | Set-Content -LiteralPath $SecretPath -Encoding ASCII
+$secureEndpoint | ConvertFrom-SecureString | Set-Content -LiteralPath $SecretPath -Encoding ASCII -NoNewline
 Remove-Variable plainEndpoint -ErrorAction SilentlyContinue
 
 $VenvPython = Join-Path $InstallRoot '.venv\Scripts\python.exe'

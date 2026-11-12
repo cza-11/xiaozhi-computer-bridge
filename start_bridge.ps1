@@ -67,7 +67,7 @@ if ($SetEndpoint) {
         if ($LASTEXITCODE -ne 0) { throw '接入点格式无效，原有配置未更改。' }
         $newSecureEndpoint = ConvertTo-SecureString -String $newEndpoint -AsPlainText -Force
         New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
-        $newSecureEndpoint | ConvertFrom-SecureString | Set-Content -LiteralPath $SecretPath -Encoding ASCII
+        $newSecureEndpoint | ConvertFrom-SecureString | Set-Content -LiteralPath $SecretPath -Encoding ASCII -NoNewline
     } finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
         $env:XIAOZHI_MCP_ENDPOINT = $previousEndpoint
@@ -119,12 +119,19 @@ if ($Detached) {
         '-ExecutionPolicy', 'Bypass',
         '-File', ('"' + $MyInvocation.MyCommand.Path + '"')
     )
-    Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WindowStyle Hidden
+    $ControllerStdoutPath = Join-Path $DataDir 'controller.out.log'
+    $ControllerStderrPath = Join-Path $DataDir 'controller.err.log'
+    $controller = Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput $ControllerStdoutPath -RedirectStandardError $ControllerStderrPath
 
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     $lastStatus = 'starting'
     do {
         Start-Sleep -Milliseconds 500
+        $controller.Refresh()
+        if ($controller.HasExited) {
+            throw "桥接程序启动失败（退出码 $($controller.ExitCode)）。请查看：$ControllerStderrPath"
+        }
         try {
             $health = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 1
             $lastStatus = [string]$health.mcp_status
@@ -140,7 +147,7 @@ if ($Detached) {
             if ($_.Exception.Message -like '*认证失败*') { throw }
         }
     } while ([DateTime]::UtcNow -lt $deadline)
-    throw "桥接程序已启动，但30秒内未连接小智，当前状态：$lastStatus。日志：$StdoutPath"
+    throw "30秒内未连接小智，当前状态：$lastStatus。请查看：$ControllerStderrPath、$StderrPath、$StdoutPath"
 }
 
 if (-not (Test-Path -LiteralPath $Python)) { throw "缺少虚拟环境：$Python" }
@@ -149,7 +156,7 @@ if (-not (Test-Path -LiteralPath $SecretPath)) { throw "缺少加密接入点：
 # Decrypt the current-user DPAPI secret only long enough to place it in the
 # child process environment; never put the token in command-line arguments.
 # 使用当前用户的 DPAPI 解密地址，并通过环境变量传给子进程。
-$secureEndpoint = Get-Content -Raw -LiteralPath $SecretPath | ConvertTo-SecureString
+$secureEndpoint = ConvertTo-SecureString -String (Get-Content -Raw -LiteralPath $SecretPath).Trim()
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureEndpoint)
 try {
     $endpoint = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
